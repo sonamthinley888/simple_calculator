@@ -5,6 +5,7 @@ import DigitButton from "./DigitButton"
 import OperationButton from './OperationButton';
 
 export const ACTIONS = {
+
   ADD_DIGIT: 'add-digit',
   CHOOSE_OPERATION: 'choose-operation',
   CLEAR: 'clear',
@@ -13,65 +14,64 @@ export const ACTIONS = {
 }
 
 // Initial state
-const initialState = {
-  currentOperand: '',
-  previousOperand: '',
-  operation: null,
-};
+const initialState = {};
+
+
+//  The reducer function listens for dispatched actions and updates the state accordingly.
 
 function reducer(state, {type,payload}){
   switch(type){
     case ACTIONS.ADD_DIGIT:
+      // If the last action was an evaluation, pressing a new digit should reset the state (by setting overwrite to false).
       if (state.overwrite) {
-        return{
-          // Pressing a digit after evaluating should clear all and display current digit 
+        return{          
           ...state,
           currentOperand: payload.digit,
           overwrite: false,
         }
       }
-      // Avoid repeating 0 and .
+      // The reducer also ensures no leading 0s and only one . is allowed in the currentOperand.
       if (payload.digit === "0" && state.currentOperand === "0") {
         return state
       };
       if (payload.digit === "." && state.currentOperand.includes(".")) {
-      return state
-      };
+        return state
+        };
       return {
         ...state,
         currentOperand: `${state.currentOperand || ""}${payload.digit}`
       };
     
     case ACTIONS.CHOOSE_OPERATION:
-        if (state.currentOperand == null && state.previousOperand == null){
-          return state
+        
+        // It also handles the case when an operation is chosen without a current operand (e.g., pressing + before typing any number).
+      if (state.currentOperand == null && state.previousOperand == null){
+        return state
         }
 
-
-        if (state.currentOperand === null) {
-          return{
-            ...state,
-          operation: payload.operation,
-
-          }
-
-        }
-
-        if (state.previousOperand == null) {
-          return {
-            ...state, 
-            operation: payload.operation,
-            previousOperand: state.currentOperand,
-            currentOperand: null,
-          }
-
-        }
-        return {
+      if (state.currentOperand === null) {
+        return{
           ...state,
-          previousOperand: evaluate(state),
           operation: payload.operation,
-          currentOperand: null
         }
+      }
+
+        // The CHOOSE_OPERATION action stores the current operand in the previousOperand and sets the operation. 
+      if (state.previousOperand == null) {
+        return {
+          ...state, 
+          operation: payload.operation,
+          previousOperand: state.currentOperand,
+          currentOperand: null,
+        }
+
+        }
+      return {
+      ...state,
+      previousOperand: evaluate(state),
+      operation: payload.operation,
+      currentOperand: null
+      }
     
 
     case ACTIONS.CLEAR: 
@@ -97,6 +97,7 @@ function reducer(state, {type,payload}){
 
 
     case ACTIONS.EVALUATE:
+    // The EVALUATE action uses a helper evaluate function to calculate the result and clear out the operation and previousOperand.
       if (
         state.operation == null || 
         state.currentOperand == null || 
@@ -116,6 +117,10 @@ function reducer(state, {type,payload}){
      
     }
 }
+
+// HELPER FUNCTIONS
+
+// evaluate: Performs the actual arithmetic calculation based on the operation and both operands.
 
 function evaluate({currentOperand, previousOperand, operation}) {
   const prev = parseFloat(previousOperand)
@@ -140,10 +145,13 @@ function evaluate({currentOperand, previousOperand, operation}) {
   return computation.toString();
 }
 
-// Separate interger oprtion and decimal portion for formatting 
+//  formatOperand: Formats the operand (removes unnecessary decimal places) using Intl.NumberFormat.
+
 const INTEGER_FORMATTER = new Intl.NumberFormat("en-us", {
   maximumFractionDigits: 0,
 })
+
+// The formatOperand function ensures the result is displayed with no more than zero decimal places, making it more readable.
 
 function formatOperand(operand) {
   if (operand == null) return
@@ -151,6 +159,10 @@ function formatOperand(operand) {
   if (decimal == null) return INTEGER_FORMATTER.format(integer)
   return `${INTEGER_FORMATTER.format(integer)}.${decimal}`
 }
+
+
+
+//  STATE MANAGEMENT WITH USEREDUCER: The useReducer hook is used to handle the state for the calculator. 
 
 function App() {
   const [{currentOperand, previousOperand, operation}, dispatch] = useReducer(
